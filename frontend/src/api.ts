@@ -101,6 +101,10 @@ export const api = {
     request(`/models/${modelId}/checks/trigger`, { method: "POST" }),
   triggerMonitoring: (modelId: string): Promise<ModelDetail> =>
     request(`/models/${modelId}/monitoring/trigger`, { method: "POST" }),
+  cancelJob: (modelId: string): Promise<ModelDetail> =>
+    request(`/models/${modelId}/checks/cancel`, { method: "POST" }),
+  deleteModel: (modelId: string): Promise<{ model_id: string; deleted: boolean }> =>
+    request(`/models/${modelId}`, { method: "DELETE" }),
   modelCredential: (modelId: string): Promise<{ token: string | null; created: boolean; credential_configured: boolean; scopes: string[]; model_id: string }> =>
     request(`/models/${modelId}/credentials`, {
       method: "POST",
