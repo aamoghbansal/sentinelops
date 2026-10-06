@@ -136,8 +136,11 @@ def serve_loop(api_url: str, model_id: str, token: str, interval: float) -> None
                     token,
                     model_path=work.get("local_model_path"),
                 )
-        except SystemExit:
-            # get()/post() already logged a clear reason; keep the daemon alive and retry.
+        except SystemExit as exc:
+            # A removed model should stop this model-specific daemon rather than poll forever.
+            if exc.code == 2:
+                logger.info("Registered model is no longer available. Stopping Agent for this model.")
+                return
             logger.warning("Agent request failed; retrying in %ss", interval)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Agent loop error: %s", exc)
