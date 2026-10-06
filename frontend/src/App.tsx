@@ -15,7 +15,7 @@ import {
   Boxes,
   ShieldCheck,
 } from "lucide-react";
-import { api, ModelDetail, ModelSummary, MonitoringModel, MonitoringResult } from "./api";
+import { API, api, ModelDetail, ModelSummary, MonitoringModel, MonitoringResult } from "./api";
 
 type Page = "dashboard" | "models" | "monitoring" | "detail";
 
