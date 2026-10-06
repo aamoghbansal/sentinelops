@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
+  Trash2,
+  Square,
   ChevronLeft,
   Copy,
   GitBranch,
@@ -394,6 +396,44 @@ export default function App() {
     }
   };
 
+  const handleCancelJob = async () => {
+    const activeId = selectedIdRef.current;
+    if (!activeId || busy || !detail?.check_pending) return;
+    setBusy(true);
+    setError("");
+    try {
+      setDetail(await api.cancelJob(activeId));
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDeleteModel = async () => {
+    const activeId = selectedIdRef.current;
+    if (!activeId || busy) return;
+    const confirmed = window.confirm(
+      'Remove "' + (detail?.name ?? "this model") +
+      '" from SentinelOps? Registry metadata, credentials, and stored monitoring history will be removed. Local model files will not be deleted.'
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.deleteModel(activeId);
+      setSelectedId(undefined);
+      setDetail(undefined);
+      setToken("");
+      setPage("models");
+      await loadModels();
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleTriggerCheck = async () => {
     const activeId = selectedIdRef.current;
     if (!activeId || busy) return;
@@ -593,21 +633,34 @@ export default function App() {
                   <p className="mono">{detail.model_id}</p>
                 </div>
                 <div className="button-row">
-                <button
-                  className="btn primary"
-                  disabled={busy || detail.check_pending}
-                  onClick={handleTriggerCheck}
-                >
-                  <Play size={14} /> {detail.pending_action === "model_check" ? `Checking… ${formatElapsed(detail.check_requested_at)}` : "Run Model Check"}
-                </button>
-                <button
-                  className="btn"
-                  disabled={busy || detail.check_pending}
-                  onClick={handleTriggerMonitoring}
-                >
-                  <Activity size={14} /> {detail.pending_action === "monitor_model" ? `Monitoring… ${formatElapsed(detail.check_requested_at)}` : "Run Monitoring"}
-                </button>
-              </div>
+                  {detail.check_pending ? (
+                    <button className="btn danger" disabled={busy} onClick={handleCancelJob}>
+                      <Square size={13} /> Stop {detail.pending_action === "monitor_model" ? "Monitoring" : "Check"}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="btn primary"
+                        disabled={busy || !detail.agent_connected}
+                        onClick={handleTriggerCheck}
+                        title={!detail.agent_connected ? "Connect the local Agent first" : undefined}
+                      >
+                        <Play size={14} /> Run Model Check
+                      </button>
+                      <button
+                        className="btn"
+                        disabled={busy || !detail.agent_connected}
+                        onClick={handleTriggerMonitoring}
+                        title={!detail.agent_connected ? "Connect the local Agent first" : undefined}
+                      >
+                        <Activity size={14} /> Run Monitoring
+                      </button>
+                    </>
+                  )}
+                  <button className="btn danger" disabled={busy} onClick={handleDeleteModel}>
+                    <Trash2 size={14} /> Remove Model
+                  </button>
+                </div>
               </div>
 
               {detail.check_pending && (
@@ -696,8 +749,7 @@ export default function App() {
                     </>
                   ) : (
                     <div className="empty">
-                      No check has run yet. Create an Agent token, start the Agent, then click{" "}
-                      <b>Run Model Check</b>.
+                      No check has run yet. Once the local Agent is connected, use the buttons above. Routine Agent work runs automatically in the background.
                     </div>
                   )}
                 </section>
@@ -711,7 +763,15 @@ export default function App() {
                   <span className="muted">Scoped token for the local Agent</span>
                 </div>
                 <div className="form-row">
-                  {detail.credential_configured ? <><span className="muted"><Badge status="CONNECTED" label="Configured" /> Existing Agent credential retained. Its secret is not shown again.</span><button className="btn" disabled={busy} onClick={handleRotateToken}><RefreshCw size={14} /> Rotate credential</button><button className="btn danger" disabled={busy} onClick={handleDisconnectAgent}>Disconnect Agent</button></> : <button className="btn" disabled={busy} onClick={handleCreateToken}><KeyRound size={14} /> Create token</button>}
+                  {detail.credential_configured ? (
+                    <>
+                      <span className="muted"><Badge status={detail.agent_connected ? "CONNECTED" : "REGISTERED"} label={detail.agent_connected ? "Connected" : "Credential configured"} /> {detail.agent_connected ? "The local Agent is ready for automatic jobs." : "Start the Agent once to enable automatic jobs."}</span>
+                      <button className="btn" disabled={busy} onClick={handleRotateToken}><RefreshCw size={14} /> Rotate credential</button>
+                      <button className="btn danger" disabled={busy} onClick={handleDisconnectAgent}>Disconnect Agent</button>
+                    </>
+                  ) : (
+                    <button className="btn" disabled={busy} onClick={handleCreateToken}><KeyRound size={14} /> Create token</button>
+                  )}
                 </div>
                 {token && (
                   <div className="token-row">
@@ -721,7 +781,9 @@ export default function App() {
                     </button>
                   </div>
                 )}
-                {!detail.credential_configured || token ? <><p className="muted label">One-shot check</p><pre className="cmd">sentinelops-agent check --api-url {API} --model-id {detail.model_id} --token {token || "YOUR_TOKEN"}</pre><p className="muted label">Run as daemon</p><pre className="cmd">sentinelops-agent serve --api-url {API} --model-id {detail.model_id} --token {token || "YOUR_TOKEN"}</pre><p className="muted label">Monitoring with local data</p><pre className="cmd">sentinelops-agent monitor-model --api-url {API} --model-id {detail.model_id} --token {token || "YOUR_TOKEN"} --reference PATH_TO_REFERENCE.csv --current PATH_TO_CURRENT.csv --label-column target</pre></> : <p className="muted label">Use the token saved when the Agent was first configured. Rotation and revocation remain explicit future actions.</p>}
+                <div className="empty">
+                  After the Agent is connected, you do not need to run model-check or monitoring commands in the terminal. Use the buttons above; the Agent picks up and executes jobs automatically.
+                </div>
               </section>
             </>
           )}
