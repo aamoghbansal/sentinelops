@@ -1,0 +1,21 @@
+[project]
+name = "sentinelops-backend"
+version = "0.1.0"
+description = "SentinelOps FastAPI backend"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.30,<1",
+  "sqlalchemy>=2.0,<3",
+  "pydantic-settings>=2.6,<3",
+  "pandas>=2.2,<3",
+  "numpy>=2.0,<3",
+  "scipy>=1.14,<2",
+  "scikit-learn>=1.5,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "httpx>=0.27,<1"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

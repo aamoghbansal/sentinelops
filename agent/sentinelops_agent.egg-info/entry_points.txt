@@ -1,0 +1,2 @@
+[console_scripts]
+sentinelops-agent = sentinelops_agent.cli:main

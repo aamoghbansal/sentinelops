@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: sentinelops-backend
+Version: 0.1.0
+Summary: SentinelOps FastAPI backend
+Requires-Python: >=3.11
+Requires-Dist: fastapi<1,>=0.115
+Requires-Dist: uvicorn[standard]<1,>=0.30
+Requires-Dist: sqlalchemy<3,>=2.0
+Requires-Dist: pydantic-settings<3,>=2.6
+Requires-Dist: pandas<3,>=2.2
+Requires-Dist: numpy<3,>=2.0
+Requires-Dist: scipy<2,>=1.14
+Requires-Dist: scikit-learn<2,>=1.5
+Provides-Extra: dev
+Requires-Dist: pytest<9,>=8; extra == "dev"
+Requires-Dist: httpx<1,>=0.27; extra == "dev"

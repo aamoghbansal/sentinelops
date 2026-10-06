@@ -1,0 +1,3 @@
+Delete (do not keep):
+  backend/app/services/agent_runner.py   <- let the backend fake the Agent; no longer used
+  backend/sentinelops.db                 <- dev DB full of test rows; recreated + re-seeded on next backend start
