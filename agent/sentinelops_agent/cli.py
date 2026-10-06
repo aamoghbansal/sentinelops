@@ -10,7 +10,7 @@ import joblib
 
 from sentinelops_agent.model_check import _resolve_model_path, run_model_check
 from sentinelops_agent.monitoring import data_quality, drift_report, monitoring_report
-from sentinelops_agent.scanner import scan_project
+from sentinelops_agent.scanner import scan_project, discover_monitoring_inputs
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [agent] %(message)s")
 logger = logging.getLogger(__name__)
@@ -100,6 +100,21 @@ def run_local_check_and_submit(
     return submit_check(api_url, model_id, token, result)
 
 
+def run_auto_monitoring_and_submit(api_url: str, model_id: str, token: str, model_path: str) -> dict:
+    try:
+        model_file = _resolve_model_path(model_path)
+        model = joblib.load(model_file)
+        model_features = [str(x) for x in getattr(model, "feature_names_in_", [])] or None
+        detection = discover_monitoring_inputs(str(model_file), model_features)
+        logger.info("Auto-detected monitoring data reference=%s current=%s label=%s", detection["reference_path"], detection["current_path"], detection.get("label_column"))
+        reference = pd.read_csv(detection["reference_path"])
+        current = pd.read_csv(detection["current_path"])
+        payload = monitoring_report(reference, current, model, detection.get("label_column"))
+        return post(api_url, f"/agent/models/{model_id}/monitoring", token, payload)
+    except Exception as exc:
+        logger.error("Automatic monitoring failed: %s", exc)
+        raise SystemExit(1) from exc
+
 def serve_loop(api_url: str, model_id: str, token: str, interval: float) -> None:
     logger.info("Agent serve started model_id=%s interval=%ss", model_id, interval)
     while True:
@@ -113,6 +128,13 @@ def serve_loop(api_url: str, model_id: str, token: str, interval: float) -> None
                     model_path=work.get("local_model_path"),
                     framework=work.get("framework"),
                     model_type=work.get("model_type"),
+                )
+            elif work.get("action") == "monitor_model":
+                run_auto_monitoring_and_submit(
+                    api_url,
+                    model_id,
+                    token,
+                    model_path=work.get("local_model_path"),
                 )
         except SystemExit:
             # get()/post() already logged a clear reason; keep the daemon alive and retry.
