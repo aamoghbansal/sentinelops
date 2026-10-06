@@ -465,6 +465,37 @@ def trigger_model_monitoring(model_id: str, session: DbSession):
     return model_detail(project)
 
 
+@app.post("/models/{model_id}/checks/cancel", response_model=ModelDetail)
+def cancel_model_job(model_id: str, session: DbSession):
+    """Cancel a queued local-Agent job. A job already executing may finish locally, but its result is ignored."""
+    project = get_project_by_model_id(session, model_id)
+    if not project.check_requested_at:
+        return model_detail(project)
+    action = project.metadata_json.get("pending_agent_action", "model_check")
+    project.check_requested_at = None
+    project.metadata_json = {k: v for k, v in project.metadata_json.items() if k != "pending_agent_action"}
+    session.add(ActivityEvent(
+        project_id=project.id,
+        kind="agent.job_cancelled",
+        message=f"Cancelled pending Agent job: {action}.",
+    ))
+    session.commit()
+    session.refresh(project)
+    return model_detail(project)
+
+
+@app.delete("/models/{model_id}")
+def delete_model(model_id: str, session: DbSession):
+    """Remove a registered model and its stored SentinelOps metadata/history."""
+    project = get_project_by_model_id(session, model_id)
+    if project.check_requested_at:
+        project.check_requested_at = None
+        project.metadata_json = {k: v for k, v in project.metadata_json.items() if k != "pending_agent_action"}
+    session.delete(project)
+    session.commit()
+    return {"model_id": model_id, "deleted": True}
+
+
 @app.get("/agent/models/{model_id}")
 def agent_model_config(model_id: str, session: DbSession, _: AgentCredential = Depends(require_agent_for_model)):
     project = get_project_by_model_id(session, model_id)
@@ -510,6 +541,8 @@ def agent_model_check(
     project = get_project_by_model_id(session, model_id)
     if payload.model_id != model_id:
         raise HTTPException(400, "model_id mismatch")
+    if project.metadata_json.get("pending_agent_action") != "model_check":
+        raise HTTPException(409, "Model check was cancelled or is no longer pending.")
     logger.info("Agent model check received model_id=%s status=%s", model_id, payload.status)
     check = payload.model_dump()
     check["received_at"] = datetime.now(timezone.utc).isoformat()
@@ -538,6 +571,8 @@ def agent_model_monitoring(
 ):
     """Store results calculated locally by the Agent; raw datasets never leave it."""
     project = get_project_by_model_id(session, model_id)
+    if project.metadata_json.get("pending_agent_action") != "monitor_model":
+        raise HTTPException(409, "Monitoring job was cancelled or is no longer pending.")
     detected = payload.overall_drift_status.upper() == "DRIFTED"
     project.drift_status = "detected" if detected else "clear"
     project.check_requested_at = None
