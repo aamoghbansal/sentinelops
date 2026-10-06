@@ -15,6 +15,7 @@ export type ModelSummary = {
 export type ModelDetail = ModelSummary & {
   last_check: Record<string, unknown> | null;
   check_pending: boolean;
+  check_requested_at: string | null;
   metadata: Record<string, unknown>;
   credential_configured: boolean;
   latest_monitoring: MonitoringResult | null;
