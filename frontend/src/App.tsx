@@ -575,7 +575,7 @@ export default function App() {
                   <RefreshCw size={16} />
                   <span>
                     Waiting for the local Agent to run the check. Make sure the Agent is running:{" "}
-                    <code>sentinelops-agent serve --model-id {detail.model_id} --token YOUR_TOKEN</code>
+                    <code>sentinelops-agent serve --api-url {API} --model-id {detail.model_id} --token YOUR_TOKEN</code>
                   </span>
                 </div>
               )}
@@ -682,7 +682,7 @@ export default function App() {
                     </button>
                   </div>
                 )}
-                {!detail.credential_configured || token ? <><p className="muted label">One-shot check</p><pre className="cmd">sentinelops-agent check --model-id {detail.model_id} --token {token || "YOUR_TOKEN"}</pre><p className="muted label">Run as daemon</p><pre className="cmd">sentinelops-agent serve --model-id {detail.model_id} --token {token || "YOUR_TOKEN"}</pre><p className="muted label">Monitoring with local data</p><pre className="cmd">sentinelops-agent monitor-model --model-id {detail.model_id} --token {token || "YOUR_TOKEN"} --reference PATH_TO_REFERENCE.csv --current PATH_TO_CURRENT.csv --label-column target</pre></> : <p className="muted label">Use the token saved when the Agent was first configured. Rotation and revocation remain explicit future actions.</p>}
+                {!detail.credential_configured || token ? <><p className="muted label">One-shot check</p><pre className="cmd">sentinelops-agent check --api-url {API} --model-id {detail.model_id} --token {token || "YOUR_TOKEN"}</pre><p className="muted label">Run as daemon</p><pre className="cmd">sentinelops-agent serve --api-url {API} --model-id {detail.model_id} --token {token || "YOUR_TOKEN"}</pre><p className="muted label">Monitoring with local data</p><pre className="cmd">sentinelops-agent monitor-model --api-url {API} --model-id {detail.model_id} --token {token || "YOUR_TOKEN"} --reference PATH_TO_REFERENCE.csv --current PATH_TO_CURRENT.csv --label-column target</pre></> : <p className="muted label">Use the token saved when the Agent was first configured. Rotation and revocation remain explicit future actions.</p>}
               </section>
             </>
           )}
