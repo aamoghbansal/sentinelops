@@ -28,7 +28,6 @@ class ModelDetail(ModelSummary):
     check_pending: bool
     check_requested_at: datetime | None
     pending_action: str | None = None
-    check_requested_at: datetime | None
     metadata: dict[str, Any]
     credential_configured: bool = False
     latest_monitoring: dict[str, Any] | None = None
