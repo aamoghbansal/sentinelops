@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 import pandas as pd
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from sklearn.datasets import load_iris
 from sqlalchemy import select
@@ -453,7 +453,17 @@ def agent_model_config(model_id: str, session: DbSession, _: AgentCredential = D
 
 
 @app.get("/agent/models/{model_id}/work", response_model=AgentWorkResponse)
-def agent_work(model_id: str, session: DbSession, _: AgentCredential = Depends(require_agent_for_model)):
+def agent_work(
+    model_id: str,
+    response: Response,
+    session: DbSession,
+    _: AgentCredential = Depends(require_agent_for_model),
+):
+    # This endpoint must always reflect the current pending work state.
+    # Vercel/CDN must never cache an old "action: null" response.
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["CDN-Cache-Control"] = "no-store"
+    response.headers["Vercel-CDN-Cache-Control"] = "no-store"
     project = get_project_by_model_id(session, model_id)
     if project.check_requested_at:
         return AgentWorkResponse(
