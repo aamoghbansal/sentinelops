@@ -380,6 +380,20 @@ export default function App() {
     }
   };
 
+  const handleTriggerMonitoring = async () => {
+    const activeId = selectedIdRef.current;
+    if (!activeId || busy || detail?.check_pending) return;
+    setBusy(true);
+    setError("");
+    try {
+      setDetail(await api.triggerMonitoring(activeId));
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleTriggerCheck = async () => {
     const activeId = selectedIdRef.current;
     if (!activeId || busy) return;
@@ -578,21 +592,29 @@ export default function App() {
                   </h1>
                   <p className="mono">{detail.model_id}</p>
                 </div>
+                <div className="button-row">
                 <button
                   className="btn primary"
                   disabled={busy || detail.check_pending}
                   onClick={handleTriggerCheck}
                 >
-                  <Play size={14} /> {detail.check_pending ? `Checking… ${formatElapsed(detail.check_requested_at)}` : "Run Model Check"}
+                  <Play size={14} /> {detail.pending_action === "model_check" ? `Checking… ${formatElapsed(detail.check_requested_at)}` : "Run Model Check"}
                 </button>
+                <button
+                  className="btn"
+                  disabled={busy || detail.check_pending}
+                  onClick={handleTriggerMonitoring}
+                >
+                  <Activity size={14} /> {detail.pending_action === "monitor_model" ? `Monitoring… ${formatElapsed(detail.check_requested_at)}` : "Run Monitoring"}
+                </button>
+              </div>
               </div>
 
               {detail.check_pending && (
                 <div className="alert info">
                   <RefreshCw size={16} />
                   <span>
-                    Check in progress · elapsed time ${formatElapsed(detail.check_requested_at)}. Waiting for the local Agent to execute it. Make sure the Agent is running:{" "}
-                    <code>sentinelops-agent serve --api-url {API} --model-id {detail.model_id} --token YOUR_TOKEN</code>
+                    {detail.pending_action === "monitor_model" ? "Monitoring" : "Model check"} in progress · {formatElapsed(detail.check_requested_at)} elapsed. The connected local Agent will execute it automatically.
                   </span>
                 </div>
               )}
