@@ -26,6 +26,7 @@ class ModelSummary(BaseModel):
 class ModelDetail(ModelSummary):
     last_check: dict[str, Any] | None
     check_pending: bool
+    check_requested_at: datetime | None
     metadata: dict[str, Any]
     credential_configured: bool = False
     latest_monitoring: dict[str, Any] | None = None
