@@ -171,6 +171,7 @@ def model_detail(project: Project) -> ModelDetail:
         last_check=project.last_check_json,
         check_pending=project.check_requested_at is not None,
         check_requested_at=project.check_requested_at,
+        pending_action=project.metadata_json.get("pending_agent_action") if project.check_requested_at else None,
         metadata=project.metadata_json,
         credential_configured=active_credential is not None,
         latest_monitoring=None if latest is None else {
@@ -428,7 +429,10 @@ def trigger_model_check(model_id: str, session: DbSession):
     """Flag a pending check. The local Agent picks it up via /agent/models/{id}/work."""
     project = get_project_by_model_id(session, model_id)
     logger.info("Model check requested for model_id=%s (waiting for local Agent)", model_id)
+    if project.check_requested_at:
+        raise HTTPException(409, "An Agent job is already pending for this model.")
     project.check_requested_at = datetime.now(timezone.utc)
+    project.metadata_json = {**project.metadata_json, "pending_agent_action": "model_check"}
     project.status = "CONNECTED" if project.agent_connected_at else project.status
     session.add(
         ActivityEvent(
@@ -437,6 +441,25 @@ def trigger_model_check(model_id: str, session: DbSession):
             message="UI requested a local Agent model check.",
         )
     )
+    session.commit()
+    session.refresh(project)
+    return model_detail(project)
+
+
+@app.post("/models/{model_id}/monitoring/trigger", response_model=ModelDetail)
+def trigger_model_monitoring(model_id: str, session: DbSession):
+    """Queue local monitoring; the Agent auto-detects local datasets."""
+    project = get_project_by_model_id(session, model_id)
+    if project.check_requested_at:
+        raise HTTPException(409, "An Agent job is already pending for this model.")
+    project.check_requested_at = datetime.now(timezone.utc)
+    project.metadata_json = {**project.metadata_json, "pending_agent_action": "monitor_model"}
+    project.status = "CONNECTED" if project.agent_connected_at else project.status
+    session.add(ActivityEvent(
+        project_id=project.id,
+        kind="monitoring.requested",
+        message="UI requested local Agent monitoring with automatic data discovery.",
+    ))
     session.commit()
     session.refresh(project)
     return model_detail(project)
@@ -468,7 +491,7 @@ def agent_work(
     project = get_project_by_model_id(session, model_id)
     if project.check_requested_at:
         return AgentWorkResponse(
-            action="model_check",
+            action=project.metadata_json.get("pending_agent_action", "model_check"),
             model_id=project.model_id,
             local_model_path=project.local_model_path,
             framework=project.framework,
@@ -492,6 +515,7 @@ def agent_model_check(
     check["received_at"] = datetime.now(timezone.utc).isoformat()
     project.last_check_json = check
     project.check_requested_at = None
+    project.metadata_json = {k: v for k, v in project.metadata_json.items() if k != "pending_agent_action"}
     project.status = payload.status if payload.status in {"READY", "ERROR"} else "ERROR"
     session.add(
         ActivityEvent(
@@ -516,6 +540,8 @@ def agent_model_monitoring(
     project = get_project_by_model_id(session, model_id)
     detected = payload.overall_drift_status.upper() == "DRIFTED"
     project.drift_status = "detected" if detected else "clear"
+    project.check_requested_at = None
+    project.metadata_json = {k: v for k, v in project.metadata_json.items() if k != "pending_agent_action"}
     drift = {**payload.drift, "overall_status": payload.overall_drift_status.upper()}
     health = payload.health.upper()
     if health not in {"HEALTHY", "WARNING", "CRITICAL"}:
