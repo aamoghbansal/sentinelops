@@ -16,6 +16,7 @@ export type ModelDetail = ModelSummary & {
   last_check: Record<string, unknown> | null;
   check_pending: boolean;
   check_requested_at: string | null;
+  pending_action: string | null;
   metadata: Record<string, unknown>;
   credential_configured: boolean;
   latest_monitoring: MonitoringResult | null;
@@ -98,6 +99,8 @@ export const api = {
     request("/models", { method: "POST", body: JSON.stringify(body) }),
   triggerCheck: (modelId: string): Promise<ModelDetail> =>
     request(`/models/${modelId}/checks/trigger`, { method: "POST" }),
+  triggerMonitoring: (modelId: string): Promise<ModelDetail> =>
+    request(`/models/${modelId}/monitoring/trigger`, { method: "POST" }),
   modelCredential: (modelId: string): Promise<{ token: string | null; created: boolean; credential_configured: boolean; scopes: string[]; model_id: string }> =>
     request(`/models/${modelId}/credentials`, {
       method: "POST",
