@@ -57,6 +57,16 @@ function formatTime(value: unknown) {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
 }
 
+function formatElapsed(value: string | null | undefined) {
+  if (!value) return "00:00";
+  const started = new Date(value).getTime();
+  if (!Number.isFinite(started)) return "00:00";
+  const totalSeconds = Math.max(0, Math.floor((Date.now() - started) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 function errMsg(e: unknown) {
   return e instanceof Error ? e.message : String(e);
 }
@@ -212,6 +222,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [pendingTick, setPendingTick] = useState(0);
   const selectedIdRef = useRef<string | undefined>(selectedId);
   selectedIdRef.current = selectedId;
 
@@ -269,6 +280,12 @@ export default function App() {
     }, 2000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!detail?.check_pending) return;
+    const timer = window.setInterval(() => setPendingTick((tick) => tick + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [detail?.check_pending]);
 
   const openModel = async (id: string) => {
     setSelectedId(id);
@@ -566,7 +583,7 @@ export default function App() {
                   disabled={busy || detail.check_pending}
                   onClick={handleTriggerCheck}
                 >
-                  <Play size={14} /> {detail.check_pending ? "Check pending…" : "Run Model Check"}
+                  <Play size={14} /> {detail.check_pending ? `Checking… ${formatElapsed(detail.check_requested_at)}` : "Run Model Check"}
                 </button>
               </div>
 
@@ -574,7 +591,7 @@ export default function App() {
                 <div className="alert info">
                   <RefreshCw size={16} />
                   <span>
-                    Waiting for the local Agent to run the check. Make sure the Agent is running:{" "}
+                    Check in progress · elapsed time ${formatElapsed(detail.check_requested_at)}. Waiting for the local Agent to execute it. Make sure the Agent is running:{" "}
                     <code>sentinelops-agent serve --api-url {API} --model-id {detail.model_id} --token YOUR_TOKEN</code>
                   </span>
                 </div>
