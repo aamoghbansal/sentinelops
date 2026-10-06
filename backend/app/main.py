@@ -170,6 +170,7 @@ def model_detail(project: Project) -> ModelDetail:
         **summary.model_dump(),
         last_check=project.last_check_json,
         check_pending=project.check_requested_at is not None,
+        check_requested_at=project.check_requested_at,
         metadata=project.metadata_json,
         credential_configured=active_credential is not None,
         latest_monitoring=None if latest is None else {
