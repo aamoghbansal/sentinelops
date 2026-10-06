@@ -153,3 +153,9 @@ pre.cmd { max-height: none; white-space: pre-wrap; word-break: break-all; margin
   .monitor-summary, .metric-grid { grid-template-columns: 1fr; }
   .field { min-width: 100%; }
 }
+
+
+.button-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn.danger { color: #b42318; border-color: #f2c5c2; background: #fff; }
+.btn.danger:hover:not(:disabled) { background: #fff4f2; }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
