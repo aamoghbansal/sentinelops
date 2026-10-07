@@ -223,6 +223,7 @@ export default function App() {
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedCommand, setCopiedCommand] = useState(false);
   const [error, setError] = useState("");
   const [pendingTick, setPendingTick] = useState(0);
   const selectedIdRef = useRef<string | undefined>(selectedId);
@@ -463,6 +464,14 @@ export default function App() {
     navigator.clipboard.writeText(token);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyStartupCommand = () => {
+    if (!token || !detail) return;
+    const command = `sentinelops-agent serve --api-url ${API} --model-id ${detail.model_id} --token "${token}"`;
+    navigator.clipboard.writeText(command);
+    setCopiedCommand(true);
+    setTimeout(() => setCopiedCommand(false), 2000);
   };
 
   if (!loaded) {
@@ -781,9 +790,38 @@ export default function App() {
                     </button>
                   </div>
                 )}
-                <div className="empty">
-                  After the Agent is connected, you do not need to run model-check or monitoring commands in the terminal. Use the buttons above; the Agent picks up and executes jobs automatically.
-                </div>
+
+                {!detail.agent_connected && token && (
+                  <div className="card agent-start-card">
+                    <div className="card-head">
+                      <h2>Start the local Agent</h2>
+                      <span className="muted">One-time setup for this model</span>
+                    </div>
+                    <p className="muted">
+                      Copy this exact command into the SentinelOps Agent terminal. You do not need to type or replace anything.
+                    </p>
+                    <div className="token-row">
+                      <code className="cmd">sentinelops-agent serve --api-url {API} --model-id {detail.model_id} --token "{token}"</code>
+                      <button className="btn sm" type="button" onClick={copyStartupCommand}>
+                        {copiedCommand ? <Check size={13} /> : <Copy size={13} />} {copiedCommand ? "Copied" : "Copy command"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {!detail.agent_connected && detail.credential_configured && !token && (
+                  <div className="empty">
+                    This model already has an Agent credential, but the secret is hidden after its first display.
+                    Use <b>Rotate credential</b> to generate a new token and reveal the exact startup command.
+                  </div>
+                )}
+
+                {detail.agent_connected && (
+                  <div className="empty">
+                    Agent connected. You do not need to run model-check or monitoring commands in the terminal.
+                    Use the buttons above; the Agent picks up and executes jobs automatically.
+                  </div>
+                )}
               </section>
             </>
           )}
